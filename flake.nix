@@ -48,112 +48,23 @@
 
         yosys-ghdl = prev.yosys-ghdl;
 
-        yosys = with final;
-          stdenv.mkDerivation rec {
-            pname = "yosys";
-            version = "0.17";
+        yosys = prev.yosys.overrideAttrs (prevAttr: rec {
+          version = "0.17";
 
-            src = fetchFromGitHub {
-              owner = "YosysHQ";
-              repo = "yosys";
-              rev = "${pname}-${version}";
-              hash = "sha256-IjT+G3figWe32tTkIzv/RFjy0GBaNaZMQ1GA8mRHkio=";
-            };
-
-            enableParallelBuilding = true;
-            nativeBuildInputs = [ pkg-config bison flex ];
-            buildInputs = [
-              tcl
-              readline
-              libffi
-              zlib
-              (python3.withPackages (pp: with pp; [ click ]))
-            ];
-
-            makeFlags = [ "PREFIX=${placeholder "out"}" ];
-
-            patches = [
-              ./plugin-search-dirs.patch
-              ./fix-clang-build.patch # see https://github.com/YosysHQ/yosys/issues/2011
-            ];
-
-            postPatch = ''
-              substituteInPlace ./Makefile \
-                --replace 'echo UNKNOWN' 'echo ${
-                  builtins.substring 0 10 src.rev
-                }'
-
-              chmod +x ./misc/yosys-config.in
-              patchShebangs tests ./misc/yosys-config.in
-            '';
-
-            preBuild =
-              let shortAbcRev = builtins.substring 0 7 abc-verifier.rev;
-              in ''
-                chmod -R u+w .
-                make config-${
-                  if stdenv.cc.isClang or false then "clang" else "gcc"
-                }
-                echo 'ABCEXTERNAL = ${abc-verifier}/bin/abc' >> Makefile.conf
-
-                cat Makefile
-
-                if ! grep -q "ABCREV = ${shortAbcRev}" Makefile; then
-                  echo "ERROR: yosys isn't compatible with the provided abc (${shortAbcRev}), failing."
-                  exit 1
-                fi
-
-                if ! grep -q "YOSYS_VER := $version" Makefile; then
-                  echo "ERROR: yosys version in Makefile isn't equivalent to version of the nix package (allegedly ${version}), failing."
-                  exit 1
-                fi
-              '';
-
-            checkTarget = "test";
-            doCheck = false;
-            checkInputs = [ verilog ];
-
-            # Internally, yosys knows to use the specified hardcoded ABCEXTERNAL binary.
-            # But other tools (like mcy or symbiyosys) can't know how yosys was built, so
-            # they just assume that 'yosys-abc' is available -- but it's not installed
-            # when using ABCEXTERNAL
-            #
-            # add a symlink to fake things so that both variants work the same way. this
-            # is also needed at build time for the test suite.
-            postBuild = "ln -sfv ${abc-verifier}/bin/abc ./yosys-abc";
-            postInstall = "ln -sfv ${abc-verifier}/bin/abc $out/bin/yosys-abc";
-
-            setupHook = ./yosys-setup-hook.sh;
-
-            passthru = let
-              withPlugins = plugins:
-                let
-                  paths = lib.closePropagation plugins;
-                  module_flags = with builtins;
-                    concatStringsSep " "
-                    (map (n: "--add-flags -m --add-flags ${n.plugin}") plugins);
-                in lib.appendToName "with-plugins" (lib.symlinkJoin {
-                  inherit (yosys) name;
-                  paths = paths ++ [ yosys ];
-                  nativeBuildInputs = [ makeWrapper ];
-                  postBuild = ''
-                    wrapProgram $out/bin/yosys \
-                      --set NIX_YOSYS_PLUGIN_DIRS $out/share/yosys/plugins \
-                      ${module_flags}
-                  '';
-                });
-
-              allPlugins = { ghdl = yosys-ghdl; };
-            in { inherit withPlugins allPlugins; };
-
-            meta = with lib; {
-              description = "Open RTL synthesis framework and tools";
-              homepage = "https://yosyshq.net/yosys/";
-              license = licenses.isc;
-              platforms = platforms.all;
-              maintainers = with maintainers; [ thoughtpolice ];
-            };
+          src = final.fetchFromGitHub {
+            owner = "yosyshq";
+            repo = "yosys";
+            rev = "${prevAttr.pname}-${version}";
+            hash = "sha256-IjT+G3figWe32tTkIzv/RFjy0GBaNaZMQ1GA8mRHkio=";
           };
+
+          doCheck = false; # FIXME(ac): can we turn these back on?
+
+          passthru = {
+            inherit (prevAttr) withPlugins;
+            allPlugins = { ghdl = yosys-ghdl; };
+          };
+        });
 
         nextpnr-xilinx = with final;
           stdenv.mkDerivation rec {
