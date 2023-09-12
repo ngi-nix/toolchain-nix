@@ -1,5 +1,5 @@
-{ stdenv, backend, nextpnr-xilinx, prjxray, pypy3, coreutils
-, findutils, gnused, gnugrep, ... }:
+{ stdenv, backend, nextpnr-xilinx, prjxray, pypy3, coreutils, findutils, gnused
+, gnugrep, ... }:
 stdenv.mkDerivation rec {
   pname = "nextpnr-xilinx-chipdb";
   version = nextpnr-xilinx.version;
