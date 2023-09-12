@@ -36,12 +36,12 @@
       overlay = final: prev: rec {
         ghdl = prev.ghdl;
 
-        abc-verifier = prev.abc-verifier.overrideAttrs (_: {
-          version = "for-yosys-0.17";
+        abc-verifier = prev.abc-verifier.overrideAttrs (_: rec {
+          version = "yosys-0.17";
           src = final.fetchFromGitHub {
             owner = "yosyshq";
             repo = "abc";
-            rev = "09a7e6d";
+            rev = version;
             hash = "sha256-+1UcYjK2mvhlTHl6lVCcj5q+1D8RUTquHaajSl5NuJg=";
           };
         });
