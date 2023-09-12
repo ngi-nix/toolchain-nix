@@ -5,7 +5,6 @@
   # Nixpkgs / NixOS version to use.
   inputs.nixpkgs.url = "nixpkgs/nixos-22.11";
   inputs.flake-utils.url = "github:numtide/flake-utils";
-
   outputs = { self, nixpkgs, flake-utils, ... }:
     let
 
@@ -35,38 +34,17 @@
     in {
       # A Nixpkgs overlay.
       overlay = final: prev: rec {
-        ghdl = prev.callPackage ./nix/ghdl.nix { };
+        ghdl = prev.ghdl;
 
-        abc-verifier = with final;
-          stdenv.mkDerivation rec {
-            pname = "abc-verifier";
-            version = "for-yosys-0.17";
-
-            src = fetchFromGitHub {
-              owner = "yosyshq";
-              repo = "abc";
-              rev = "09a7e6d";
-              hash = "sha256-+1UcYjK2mvhlTHl6lVCcj5q+1D8RUTquHaajSl5NuJg=";
-            };
-
-            nativeBuildInputs = [ cmake ];
-            buildInputs = [ readline ];
-
-            installPhase = "mkdir -p $out/bin && mv abc $out/bin";
-
-            # needed by yosys
-            passthru.rev = src.rev;
-
-            meta = with lib; {
-              description =
-                "A tool for squential logic synthesis and formal verification";
-              homepage = "https://people.eecs.berkeley.edu/~alanmi/abc";
-              license = licenses.mit;
-              maintainers = with maintainers; [ thoughtpolice ];
-              mainProgram = "abc";
-              platforms = platforms.unix;
-            };
+        abc-verifier = prev.abc-verifier.overrideAttrs (_: {
+          version = "for-yosys-0.17";
+          src = final.fetchFromGitHub {
+            owner = "yosyshq";
+            repo = "abc";
+            rev = "09a7e6d";
+            hash = "sha256-+1UcYjK2mvhlTHl6lVCcj5q+1D8RUTquHaajSl5NuJg=";
           };
+        });
 
         yosys-ghdl = with final;
           stdenv.mkDerivation {
@@ -319,7 +297,9 @@
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system: {
         inherit (nixpkgsFor.${system})
-          yosys ghdl yosys-ghdl prjxray nextpnr-xilinx nextpnr-xilinx-chipdb;
+          yosys ghdl yosys-ghdl prjxray nextpnr-xilinx
+          nextpnr-xilinx-chipdb # FIXME: testing
+          abc-verifier;
       });
 
       # The default package for 'nix build'. This makes sense if the
