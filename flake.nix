@@ -23,51 +23,52 @@
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       # Nixpkgs instantiated for supported system types.
-      nixpkgsFor = forAllSystems (system:
-        import nixpkgs {
-          inherit system;
-          overlays = [ self.overlay ];
-        });
-
-      lib = nixpkgs.lib;
-
+      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
     in {
-      # A Nixpkgs overlay.
-      overlay = final: prev: rec {
-        ghdl = prev.ghdl;
 
-        abc-verifier = prev.abc-verifier.overrideAttrs (_: rec {
-          version = "yosys-0.17";
-          src = final.fetchFromGitHub {
-            owner = "yosyshq";
-            repo = "abc";
-            rev = version;
-            hash = "sha256-+1UcYjK2mvhlTHl6lVCcj5q+1D8RUTquHaajSl5NuJg=";
-          };
-        });
+      # Provide some binary packages for selected system types.
+      packages = forAllSystems (system:
+        let
+          pkgs = nixpkgsFor.${system};
+          inherit (pkgs) lib callPackage stdenv fetchgit fetchFromGitHub;
+        in rec {
+          default = yosys;
 
-        yosys-ghdl = prev.yosys-ghdl;
+          ghdl = pkgs.ghdl;
 
-        yosys = prev.yosys.overrideAttrs (prevAttr: rec {
-          version = "0.17";
+          abc-verifier = pkgs.abc-verifier.overrideAttrs (_: rec {
+            version = "yosys-0.17";
+            src = fetchFromGitHub {
+              owner = "yosyshq";
+              repo = "abc";
+              rev = "09a7e6dac739133a927ae7064d319068ab927f90" # == version
+              ;
+              hash = "sha256-+1UcYjK2mvhlTHl6lVCcj5q+1D8RUTquHaajSl5NuJg=";
+            };
+            passthru.rev = src.rev;
+          });
 
-          src = final.fetchFromGitHub {
-            owner = "yosyshq";
-            repo = "yosys";
-            rev = "${prevAttr.pname}-${version}";
-            hash = "sha256-IjT+G3figWe32tTkIzv/RFjy0GBaNaZMQ1GA8mRHkio=";
-          };
+          yosys-ghdl = pkgs.yosys-ghdl;
 
-          doCheck = false; # FIXME(ac): can we turn these back on?
+          yosys = (pkgs.yosys.overrideAttrs (prev: rec {
+            version = "0.17";
 
-          passthru = {
-            inherit (prevAttr) withPlugins;
-            allPlugins = { ghdl = yosys-ghdl; };
-          };
-        });
+            src = fetchFromGitHub {
+              owner = "yosyshq";
+              repo = "yosys";
+              rev = "${prev.pname}-${version}";
+              hash = "sha256-IjT+G3figWe32tTkIzv/RFjy0GBaNaZMQ1GA8mRHkio=";
+            };
 
-        nextpnr-xilinx = with final;
-          stdenv.mkDerivation rec {
+            doCheck = true; # FIXME(ac): can we turn these back on?
+
+            passthru = {
+              inherit (prev) withPlugins;
+              allPlugins = { ghdl = yosys-ghdl; };
+            };
+          })).override { inherit abc-verifier; };
+
+          nextpnr-xilinx = stdenv.mkDerivation rec {
             pname = "nextpnr-xilinx";
             version = "0.5.0";
 
@@ -84,8 +85,9 @@
 
             sourceRoot = "nextpnr-xilinx";
 
-            nativeBuildInputs = [ cmake git ];
-            buildInputs = [ python310Packages.boost python310 eigen ]
+            nativeBuildInputs = with pkgs; [ cmake git ];
+            buildInputs = with pkgs;
+              [ python310Packages.boost python310 eigen ]
               ++ (lib.optional stdenv.cc.isClang llvmPackages.openmp);
 
             setupHook = ./nextpnr-setup-hook.sh;
@@ -121,8 +123,7 @@
             };
           };
 
-        prjxray = with final;
-          stdenv.mkDerivation rec {
+          prjxray = stdenv.mkDerivation rec {
             pname = "prjxray";
             version = "76401bd93e493fd5ff4c2af4751d12105b0f4f6d";
 
@@ -139,8 +140,12 @@
 
             setupHook = ./prjxray-setup-hook.sh;
 
-            nativeBuildInputs = [ cmake git ];
-            buildInputs = [ python310Packages.boost python310 eigen ];
+            nativeBuildInputs = with pkgs; [ cmake git ];
+            buildInputs = with pkgs; [
+              python310Packages.boost
+              python310
+              eigen
+            ];
 
             installPhase = ''
               mkdir -p $out/bin
@@ -160,34 +165,21 @@
             };
           };
 
-        nextpnr-xilinx-chipdb = {
-          artiz7 = prev.callPackage ./nix/nextpnr-xilinx-chipdb.nix {
-            backend = "artiz7";
+          nextpnr-xilinx-chipdb = {
+            artiz7 = callPackage ./nix/nextpnr-xilinx-chipdb.nix {
+              backend = "artiz7";
+            };
+            kintex7 = callPackage ./nix/nextpnr-xilinx-chipdb.nix {
+              backend = "kintex7";
+            };
+            spartan7 = callPackage ./nix/nextpnr-xilinx-chipdb.nix {
+              backend = "spartan7";
+            };
+            zynq7 = callPackage ./nix/nextpnr-xilinx-chipdb.nix {
+              backend = "zynq7";
+            };
           };
-          kintex7 = prev.callPackage ./nix/nextpnr-xilinx-chipdb.nix {
-            backend = "kintex7";
-          };
-          spartan7 = prev.callPackage ./nix/nextpnr-xilinx-chipdb.nix {
-            backend = "spartan7";
-          };
-          zynq7 = prev.callPackage ./nix/nextpnr-xilinx-chipdb.nix {
-            backend = "zynq7";
-          };
-        };
-      };
-
-      # Provide some binary packages for selected system types.
-      packages = forAllSystems (system: {
-        inherit (nixpkgsFor.${system})
-          yosys ghdl yosys-ghdl prjxray nextpnr-xilinx
-          nextpnr-xilinx-chipdb # FIXME: testing
-          abc-verifier;
-      });
-
-      # The default package for 'nix build'. This makes sense if the
-      # flake provides only one package or there is a clear "main"
-      # package.
-      defaultPackage = forAllSystems (system: self.packages.${system}.yosys);
+        });
 
       devShell = forAllSystems (system:
         nixpkgsFor.${system}.mkShell {
