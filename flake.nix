@@ -96,7 +96,8 @@
             ];
 
             installPhase = ''
-              install -Dm 755 $out/bin nextpnr-xilinx bba/bbasm
+              mkdir -p $out/bin
+              cp nextpnr-xilinx bba/bbasm $out/bin/
               mkdir -p $out/share/nextpnr/external
               cp -rv ../xilinx/external/prjxray-db $out/share/nextpnr/external/
               cp -rv ../xilinx/external/nextpnr-xilinx-meta $out/share/nextpnr/external/
