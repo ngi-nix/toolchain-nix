@@ -72,16 +72,15 @@
             pname = "nextpnr-xilinx";
             version = "0.5.0";
 
-            srcs = [
-              (fetchgit {
-                url = "https://github.com/openXC7/nextpnr-xilinx";
-                rev = version;
-                fetchSubmodules = true;
-                deepClone = false;
-                hash = "sha256-mDYEmq3MW1kK9HeR4PyGmKQnAzpvlOf+H66o7QTFx3k=";
-                leaveDotGit = false;
-              })
-            ];
+            src = fetchgit {
+              url = "https://github.com/openXC7/nextpnr-xilinx";
+              rev = version;
+              fetchSubmodules = true;
+              deepClone = false;
+              hash = "sha256-mDYEmq3MW1kK9HeR4PyGmKQnAzpvlOf+H66o7QTFx3k=";
+              leaveDotGit =
+                false; # FIXME(jl): this might be default, maybe remove
+            };
 
             sourceRoot = "nextpnr-xilinx";
 
@@ -93,9 +92,7 @@
             setupHook = ./nextpnr-setup-hook.sh;
 
             cmakeFlags = [
-              "-DCURRENT_GIT_VERSION=${
-                lib.substring 0 7 (lib.elemAt srcs 0).rev
-              }"
+              "-DCURRENT_GIT_VERSION=${lib.substring 0 7 src.rev}"
               "-DARCH=xilinx"
               "-DBUILD_GUI=OFF"
               "-DBUILD_TESTS=OFF"
