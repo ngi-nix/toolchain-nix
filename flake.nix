@@ -72,14 +72,15 @@
             pname = "nextpnr-xilinx";
             version = "0.5.0";
 
-            src = fetchgit {
-              url = "https://github.com/openXC7/nextpnr-xilinx";
+            src = fetchFromGitHub {
+              owner = "openXC7";
+              repo = "nextpnr-xilinx";
               rev = version;
-              fetchSubmodules = true;
-              deepClone = false;
               hash = "sha256-mDYEmq3MW1kK9HeR4PyGmKQnAzpvlOf+H66o7QTFx3k=";
-              leaveDotGit =
-                false; # FIXME(jl): this might be default, maybe remove
+
+              fetchSubmodules = true; # FIXME(ac): double check?
+              deepClone = false; # FIXME(ac): double check?
+              leaveDotGit = false; # FIXME(jl): this might be default, maybe remove
             };
 
             sourceRoot = "nextpnr-xilinx";
