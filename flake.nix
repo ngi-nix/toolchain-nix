@@ -77,13 +77,8 @@
               repo = "nextpnr-xilinx";
               rev = version;
               hash = "sha256-mDYEmq3MW1kK9HeR4PyGmKQnAzpvlOf+H66o7QTFx3k=";
-
-              fetchSubmodules = true; # FIXME(ac): double check?
-              deepClone = false; # FIXME(ac): double check?
-              leaveDotGit = false; # FIXME(jl): this might be default, maybe remove
+              fetchSubmodules = true; # FIXME(ac): false is default in fetchFromGitHub, but check if we actually need this
             };
-
-            sourceRoot = "nextpnr-xilinx";
 
             nativeBuildInputs = with pkgs; [ cmake git ];
             buildInputs = with pkgs;
@@ -101,13 +96,12 @@
             ];
 
             installPhase = ''
-              mkdir -p $out/bin
-              cp nextpnr-xilinx bba/bbasm $out/bin/
-              mkdir -p $out/usr/share/nextpnr/external
-              cp -rv ../xilinx/external/prjxray-db $out/usr/share/nextpnr/external/
-              cp -rv ../xilinx/external/nextpnr-xilinx-meta $out/usr/share/nextpnr/external/
-              cp -rv ../xilinx/python/ $out/usr/share/nextpnr/python/
-              cp ../xilinx/constids.inc $out/usr/share/nextpnr
+              install -Dm 755 $out/bin nextpnr-xilinx bba/bbasm
+              mkdir -p $out/share/nextpnr/external
+              cp -rv ../xilinx/external/prjxray-db $out/share/nextpnr/external/
+              cp -rv ../xilinx/external/nextpnr-xilinx-meta $out/share/nextpnr/external/
+              cp -rv ../xilinx/python/ $out/share/nextpnr/python/
+              cp ../xilinx/constids.inc $out/share/nextpnr
             '';
 
             doCheck = false;
