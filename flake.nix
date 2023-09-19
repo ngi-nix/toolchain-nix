@@ -77,7 +77,8 @@
               repo = "nextpnr-xilinx";
               rev = version;
               hash = "sha256-mDYEmq3MW1kK9HeR4PyGmKQnAzpvlOf+H66o7QTFx3k=";
-              fetchSubmodules = true; # FIXME(ac): false is default in fetchFromGitHub, but check if we actually need this
+              fetchSubmodules =
+                true; # FIXME(ac): false is default in fetchFromGitHub, but check if we actually need this
             };
 
             nativeBuildInputs = with pkgs; [ cmake git ];
